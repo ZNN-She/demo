@@ -1,0 +1,11 @@
+{
+  "requires": true,
+  "lockfileVersion": 1,
+  "dependencies": {
+    "mask-guide": {
+      "version": "1.0.1",
+      "resolved": "https://registry.npmjs.org/mask-guide/-/mask-guide-1.0.1.tgz",
+      "integrity": "sha512-8MuL0DSdSqKZUV90W+SNemE9Czz6WHjUrLupZhdsE5eA9h8Ze8ZNW/D1X49kkSqvuj9pStM637KdVa3ilqeZug=="
+    }
+  }
+}
