@@ -4,6 +4,7 @@
   "description": "gitbook关联的一些演示demo",
   "main": "index.js",
   "dependencies": {
+    "jq-carousel": "^1.0.0",
     "mask-guide": "^1.0.1"
   },
   "devDependencies": {},
