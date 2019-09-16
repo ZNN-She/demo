@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>散点图示例</title>
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <style type="text/css">
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        #container {
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="container"></div>
+<script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+<script charset="utf-8"
+        src="https://map.qq.com/api/js?v=2.exp&libraries=visualization&key=TSJBZ-7XVCJ-6AZFB-KIYYX-ZT6WJ-MUB5N"></script>
+<script>
+    window.onload = function () {
+        // 创建地图
+        var map = new qq.maps.Map(document.getElementById("container"), {
+            center: new qq.maps.LatLng(45.6, 84.8),
+            zoom: 11
+        });
+
+        var infoWin = new qq.maps.InfoWindow({
+            map: map
+        });
+
+        // 创建散点图对象
+        var dots = new qq.maps.visualization.Dots({
+            map: map, // 必填参数，指定显示散点图的地图对象
+            style: {
+                fillColor: "#3CF",
+                strokeColor: "#00C",
+                strokeWidth: 3,
+                radius: 3
+            },
+            groupBy: "customer",
+            groupStyles: {
+                "0": {
+                    fillColor: "#0D0"
+                },
+                "1": {
+                    fillColor: "#FA3"
+                },
+                "2": {
+                    fillColor: "blue"
+                },
+                "3": {
+                    fillColor: "red"
+                }
+            }
+        });
+
+        var addressData = []; // 地址
+
+        var addressLocation = [];
+        var geocoder = new qq.maps.Geocoder({
+            complete: function (result) {
+
+                // var customerNum = 0;
+                // for (var i = 0; i < addressData.length; i++) {
+                //     if (result.detail.address === addressData[i].address.replace(/,/g, "")) {
+                //         customerNum = addressData[i].customer;
+                //         continue;
+                //     }
+                // }
+                // console.log(customerNum);
+                // addressLocation.push({
+                //     lat: result.detail.location.lat,
+                //     lng: result.detail.location.lng,
+                //     customer: String(parseInt(customerNum / 2) >= 3 ? 3 : parseInt(customerNum / 2))
+                // });
+                // console.log(addressLocation);
+                // dots.setData(addressLocation);
+
+
+                // console.log(result);
+                console.log(activeData);
+                console.log(result.detail);
+                activeData.geocoder = result;
+                // console.log(result.detail.address);
+                // var item = {};
+                // for (var i = 0; i < addressData.length; i++) {
+                //     if (result.detail.address === addressData[i].address.replace(/,/g, "")) {
+                //         item = addressData[i];
+                //         continue;
+                //     }
+                // }
+                // console.log(item);
+                // var latlng = new qq.maps.LatLng(result.detail.location.lat, result.detail.location.lng);
+                // var marker = new qq.maps.Marker({
+                //     position: latlng,
+                //     map: map
+                // });
+                // qq.maps.event.addListener(marker, 'click', function() {
+                //     infoWin.open();
+                //     infoWin.setContent('<div style="text-align:center;white-space:'+
+                //         'nowrap;margin:10px;">' + item.name +'</div>');
+                //     infoWin.setPosition(latlng);
+                // });
+
+            },
+            error: function (err) {
+                console.log(err)
+            }
+        });
+
+
+
+        function saveShareContent (content, fileName) {
+            let downLink = document.createElement('a');
+            downLink.download = fileName;
+            //字符内容转换为blod地址
+            let blob = new Blob([content]);
+            downLink.href = URL.createObjectURL(blob);
+            // 链接插入到页面
+            document.body.appendChild(downLink);
+            downLink.click();
+            // 移除下载链接
+            document.body.removeChild(downLink)
+        }
+
+
+        // 获取地址
+        var activeData = null;
+        $.get('/demo/map/data.json', function (data) {
+            console.log(data);
+            addressData = data.data;
+            var i = 0;
+            var mySetInterval = setInterval(function () {
+                if (i < data.data.length) {
+                // if (i < 10) {
+                    activeData = addressData[i];
+                    geocoder.getLocation(addressData[i].address);
+                    i++;
+                } else {
+
+                    clearInterval(mySetInterval);
+                    setTimeout(function () {
+                        console.log(addressData);
+                        saveShareContent(JSON.stringify(addressData), "addressData.json")
+                    }, 300);
+                }
+            }, 300);
+        });
+    }
+</script>
+</body>
+</html>
