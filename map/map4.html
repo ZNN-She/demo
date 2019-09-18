@@ -27,8 +27,8 @@
     window.onload = function(){
         // 创建地图
         var map = new qq.maps.Map(document.getElementById("container"), {
-            center: new qq.maps.LatLng(45.602430, 84.867820),
-            zoom:13
+            center: new qq.maps.LatLng(39.98174,116.30631),
+            zoom:5
         });
         // 创建热力图对象
         var heat = new qq.maps.visualization.Heat({
@@ -37,7 +37,7 @@
 
         function getHeatData() {
             // 获取地址
-            $.get('/demo/map/data2.json', function (data) {
+            $.get('/demo/map/data4.json', function (data) {
                 var addressData = data.data;
                 let heatData = [];
                 addressData.forEach(function (item) {
@@ -45,13 +45,13 @@
                         heatData.push({
                             lat: item.geocoder.detail.location.lat,
                             lng: item.geocoder.detail.location.lng,
-                            value: item.customer
+                            value: item.count
                         })
                     }
                 });
                 heat.setData({
-                    max: 20,
-                    min: 0,
+                    max: 50,
+                    min: 1,
                     data: heatData
                 });
             });
