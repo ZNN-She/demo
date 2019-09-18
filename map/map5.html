@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <title>区域图示例</title>
+    <style type="text/css">
+        html, body {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <script charset="utf-8"
+            src="https://map.qq.com/api/js?v=2.exp&libraries=visualization&key=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77"></script>
+    <script charset="utf-8" src="./areadata.js"></script>
+    <script>
+        var statistics = {
+            options: {
+                parentLevel: 1,
+                //显示范围，0是全国，1是某个省，2是某个市
+                parentAreaCode: 340000,
+                //全国：0，省：340000，市：340500
+                dataLevel: 3,
+                //1是显示按省分布，2是按市分布，3是按县分布
+            },
+            data: {
+                "150000": 20,
+                "420000": 15,
+                "460000": 18,
+                "140000": 52,
+                "230000": 36,
+                "360000": 15,
+                "410000": 10,
+                "220000": 5,
+                "340000": 49,
+                "610000": 41,
+                "130000": 32,
+                "440000": 5,
+                "640000": 61,
+                "510000": 11,
+                "320000": 26,
+                "650000": 7,
+                "530000": 15,
+                "370000": 19,
+                "330000": 27,
+                "210000": 30,
+                "620000": 33,
+                "430000": 36,
+                "520000": 38,
+                "630000": 39,
+                "350000": 15,
+                "810000": 10,
+                "820000": 48,
+                "540000": 40,
+                "450000": 27
+            }
+
+        }
+
+        var areadata = [];
+
+        /**
+         * 构建标准数据格式
+         * [<{
+         *   coords: <[[lng,lat,lng,lat,....]]>, (多边形点串)
+         *   count: <Number>,  (多边形对应的统计数据)
+         *   attribute: <Object> (自定义属性)
+         * }>]
+         */
+        for (var i in provinces) {
+            var province = provinces[i];
+            if (province.length > 1) {
+                for (var j = 0, l = province.length; j < l; j++) {
+                    areadata.push({
+                        coords: province[j].reverse(),
+                        count: statistics.data[i],
+                        attributes: {
+                            ccode: i
+                        }
+                    });
+                }
+            } else {
+                areadata.push({
+                    coords: provinces[i][0].reverse(),
+                    count: statistics.data[i],
+                    attributes: {
+                        ccode: i
+                    }
+                });
+            }
+        }
+    </script>
+    <script>
+        window.onload = function () {
+            var data = areadata;
+            var map = new qq.maps.Map(document.getElementById("container"), {
+                zoom: 4,
+                center: new qq.maps.LatLng(36.212827, 108.559044)
+            });
+
+            //hover时polygon的style
+            var activedStyle = {
+                lineWidth: 0.5,
+                lineColor: 'rgba(255,255,255, .5)',
+                fillColor: 'rgba(255, 255, 0, .8)'
+            };
+
+            //设置当前hover的polygon的颜色
+            function setNew(polygon) {
+                polygon._originalStyle = polygon.style;
+                polygon.setStyle(activedStyle);
+            }
+
+            //还原上一个hover的polygon的颜色
+            function resetOld(polygon) {
+                polygon.setStyle(polygon._originalStyle);
+                delete polygon._originalStyle;
+            }
+
+            //创建可视化对象
+            var area = new qq.maps.visualization.Area({
+                map: map,
+                stylePicker: function (shapeData) {
+                    var color = `rgba(255, ${Math.floor(100 * (1 - shapeData.count / 70))}, 0, ${shapeData.count / 70})`;
+                    return {
+                        fillColor: color,
+                        strokeWidth: 1,
+                        strokeColor: 'rgba(0, 0, 0, .5)',
+                    };
+                },
+                onMouseOver: function (e) {
+                    if (e.target) {
+                        setNew(e.target);
+                        area.rerender();
+                    }
+                },
+                onMouseOut: function (e) {
+                    if (e.target) {
+                        resetOld(e.target);
+                        area.rerender();
+                    }
+                }
+            });
+
+            //设置数据，更改数据时也用这个接口
+            area.setData(data);
+        }
+    </script>
+</head>
+
+<body>
+<div id="container"></div>
+</body>
+</html>
