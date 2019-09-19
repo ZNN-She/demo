@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+</head>
+<body>
+<div id="app"></div>
+<!-- built files will be auto injected -->
+<script type="text/javascript" src='//webapi.amap.com/maps?v=1.4.11&key=a466dc0ea9027f2204e24a6739f30d3a'></script>
+<script type="text/javascript" src="https://webapi.amap.com/maps?v=1.4.11&key=a466dc0ea9027f2204e24a6739f30d3a&plugin=AMap.DistrictSearch"></script>
+<!-- UI组件库 1.0 -->
+<script src="//webapi.amap.com/ui/1.0/main.js?v=1.0.11"></script>
+<script src="./echarts.min.js"></script>
+<script>
+    (function () {
+        var thisData = {
+            cityName: '中国',
+            areaCode: 10000,
+            geoJsonData: '',
+            echartsMap: null,
+            map: null,
+            uimap: null,
+            district: null,
+            polygons: [],
+            cityCode: 100000,
+            citySelect: null,
+            districtSelect: null,
+            opts: {},
+            areaData: {},
+            mapData: [],
+            zip: {},//打包zip
+            codeList: [],
+            isCodeListLoadComplete: false,//codeList是否全部获取完毕
+            downloadTips: '下载geoJson数据',//下载进度提示
+            isShowTips: false,//是否显示下载提示
+        };
+
+        function init() {
+            thisData.zip = new JSZip();
+
+            thisData.citySelect = document.getElementById('city');
+            thisData.districtSelect = document.getElementById('district');
+            thisData.echartsMap = echarts.init(document.getElementById('map'));
+            thisData.echartsMap.on('click', echartsMapClick);
+
+            thisData.map = new AMap.Map('container', {
+                resizeEnable: true,
+                center: [116.30946, 39.937629],
+                zoom: 3
+            });
+            thisData.opts = {
+                subdistrict: 1,   //返回下一级行政区
+                showbiz: false  //最后一级返回街道信息
+            };
+            thisData.district = new AMap.DistrictSearch(thisData.opts);//注意：需要使用插件同步下发功能才能这样直接使用
+            thisData.district.search('中国', (status, result) => {
+                if (status == 'complete') {
+                    getData(result.districtList[0], '', 100000);
+                }
+            });
+        }
+
+        function echartsMapClick(params) {//地图点击事件
+            thisData.$ba.trackEvent('echartsMap', '点击地图', `${params.data.name}-${params.data.cityCode}`);
+            if (params.data.level == 'street') return;
+            //清除地图上所有覆盖物
+            for (var i = 0, l = thisData.polygons.length; i < l; i++) {
+                thisData.polygons[i].setMap(null);
+            }
+            thisData.cityName = params.data.name;
+            thisData.cityCode = params.data.cityCode;
+            thisData.district.setLevel(params.data.level); //行政区级别
+            thisData.district.setExtensions('all');
+            //行政区查询
+            //按照adcode进行查询可以保证数据返回的唯一性
+            thisData.district.search(thisData.cityCode, (status, result) => {
+                if (status === 'complete') {
+                    getData(result.districtList[0], params.data.level, thisData.cityCode);
+                }
+            });
+        }
+        function loadMap(mapName, data) {
+            if (data) {
+                echarts.registerMap(mapName, data);
+                var option = {
+                    visualMap: {
+                        type: 'piecewise',
+                        pieces: [
+                            {max: 30, label: '安全', color: '#2c9a42'},
+                            {min: 30, max: 60, label: '警告', color: '#d08a00'},
+                            {min: 60, label: '危险', color: '#c23c33'},
+                        ],
+                        color: '#fff',
+                        textStyle: {
+                            color: '#fff',
+                        },
+                        visibility: 'off'
+                    },
+                    series: [{
+                        name: '数据名称',
+                        type: 'map',
+                        roam: false,
+                        mapType: mapName,
+                        selectedMode: 'single',
+                        showLegendSymbol: false,
+                        visibility: 'off',
+                        itemStyle: {
+                            normal: {
+                                color: '#ccc',
+                                areaColor: '#fff',
+                                borderColor: '#fff',
+                                borderWidth: 0.5,
+                                label: {
+                                    show: true,
+                                    textStyle: {
+                                        color: "rgb(249, 249, 249)"
+                                    }
+                                }
+                            },
+                            emphasis: {
+                                areaColor: false,
+                                borderColor: '#fff',
+                                areaStyle: {
+                                    color: '#fff'
+                                },
+                                label: {
+                                    show: true,
+                                    textStyle: {
+                                        color: "rgb(249, 249, 249)"
+                                    }
+                                }
+                            }
+                        },
+                        data: thisData.mapData,
+                    }]
+                };
+                thisData.echartsMap.setOption(option);
+            }
+        };
+        function getData(data, level, adcode) {
+            var bounds = data.boundaries;
+            if (bounds) {
+                for (var i = 0, l = bounds.length; i < l; i++) {
+                    var polygon = new AMap.Polygon({
+                        map: thisData.map,
+                        strokeWeight: 1,
+                        strokeColor: '#0091ea',
+                        fillColor: '#80d8ff',
+                        fillOpacity: 0.2,
+                        path: bounds[i]
+                    });
+                    thisData.polygons.push(polygon);
+                }
+                thisData.map.setFitView();//地图自适应
+            }
+
+            //清空下一级别的下拉列表
+            if (level === 'province') {
+                thisData.citySelect.innerHTML = '';
+                thisData.districtSelect.innerHTML = '';
+            } else if (level === 'city') {
+                thisData.districtSelect.innerHTML = '';
+            }
+
+            var subList = data.districtList;
+            if (subList) {
+                var contentSub = new Option('--请选择--');
+                var curlevel = subList[0].level;
+                if (curlevel === 'street') {
+                    let mapJsonList = thisData.geoJsonData.features;
+                    let mapJson = {};
+                    for (let i in mapJsonList) {
+                        if (mapJsonList[i].properties.name == thisData.cityName) {
+                            mapJson.features = [].concat(mapJsonList[i]);
+                        }
+                    }
+                    thisData.mapData = [];
+                    thisData.mapData.push({name: thisData.cityName, value: Math.random() * 100, level: curlevel});
+                    loadMap(thisData.cityName, mapJson);
+                    thisData.geoJsonData = mapJson;
+                    return;
+                }
+                var curList = document.querySelector('#' + curlevel);
+                curList.add(contentSub);
+                thisData.mapData = [];
+                for (var i = 0, l = subList.length; i < l; i++) {
+                    var name = subList[i].name;
+                    var cityCode = subList[i].adcode;
+                    thisData.mapData.push({
+                        name: name,
+                        value: Math.random() * 100,
+                        cityCode: cityCode,
+                        level: curlevel
+                    });
+                    var levelSub = subList[i].level;
+                    contentSub = new Option(name);
+                    contentSub.setAttribute("value", levelSub);
+                    contentSub.center = subList[i].center;
+                    contentSub.adcode = subList[i].adcode;
+                    curList.add(contentSub);
+                }
+                loadMapData(adcode);
+                thisData.areaData[curlevel] = curList;
+            }
+
+        };
+        function search(area) {
+            let obj = thisData.areaData[area];
+            //清除地图上所有覆盖物
+            for (var i = 0, l = thisData.polygons.length; i < l; i++) {
+                thisData.polygons[i].setMap(null);
+            }
+            var option = obj[obj.options.selectedIndex];
+            var keyword = option.text; //关键字
+            var adcode = option.adcode;
+            thisData.cityName = keyword;
+            thisData.cityCode = adcode;
+            thisData.$ba.trackEvent('echartsMap', '筛选地图', `${thisData.cityName}-${thisData.cityCode}`);
+            thisData.district.setLevel(option.value); //行政区级别
+            thisData.district.setExtensions('all');
+            //行政区查询
+            //按照adcode进行查询可以保证数据返回的唯一性
+            thisData.district.search(adcode, (status, result) => {
+                if (status === 'complete') {
+                    getData(result.districtList[0], obj.id, adcode);
+                }
+            });
+        }
+    })()
+</script>
+</body>
+</html>

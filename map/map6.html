@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+
+    <title>Title</title>
+    <style type="text/css">
+        html, body {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="container"></div>
+
+<script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+<script type="text/javascript" src='//webapi.amap.com/maps?v=1.4.11&key=a466dc0ea9027f2204e24a6739f30d3a'></script>
+<script type="text/javascript"
+        src="https://webapi.amap.com/maps?v=1.4.11&key=a466dc0ea9027f2204e24a6739f30d3a&plugin=AMap.DistrictSearch"></script>
+<!-- UI组件库 1.0 -->
+<script src="//webapi.amap.com/ui/1.0/main.js?v=1.0.11"></script>
+<script>
+    (function () {
+
+        var accountData = null;
+        var areadata = null;
+        var map = null;
+
+        // createMap();
+        // getAccountData();
+        getFilePath();
+
+        // 获取data地区机构数据
+        function getAccountData() {
+            $.get('/demo/map/data4.json', function (data) {
+                accountData = data.data;
+                // getFilePath();
+            });
+        }
+
+        // 获取请求文件路径
+        var paths = [];
+        function getFilePath() {
+            var paths = [];
+            var path = "/demo/map/areadata/filePath.json";
+            $.get(path, function (result) {
+                paths = result;
+                paths.forEach(function (path) {
+                    getMapPolylineData(path)
+                })
+                // var timeI = 0;
+                // setInterval(function () {
+                //     getMapPolylineData(paths[timeI]);
+                //     timeI++;
+                // }, 500);
+            });
+        }
+
+        var mapPolylineData = [];
+        var i = 1;
+        // 获取地图数据
+        function getMapPolylineData(path) {
+            $.get(path, function (result) {
+                console.log(JSON.parse(result).features);
+                var resultData = JSON.parse(result).features;
+                resultData.forEach(function (item) {
+                    var data = {
+                        adcode: item.properties.adcode,
+                        center: item.properties.center,
+                        name: item.properties.name,
+                        geometryCoordinates: item.geometry.coordinates,
+                    };
+                    console.log("----" + i +"---" ,data);
+                    i++;
+                    // saveShareContent(JSON.stringify({data: data}), data.adcode + ".json")
+                    // mapPolylineData.push(data);
+                });
+            });
+        }
+
+        // 创建地图
+        function createMap() {
+            map = new AMap.Map('container', {
+                zoom: 11 //级别
+            });
+        }
+
+        // 添加遮罩物
+        function addPolyline() {
+            // 覆盖物
+            var path = [];
+            console.log(areadata)
+
+            for (var i = 0; i < areadata[0].length; i++) {
+                var item = areadata[0][i];
+                console.log(item)
+                path.push(new AMap.LngLat(String(item[0]), String(item[1])))
+            }
+            var polyline1 = new AMap.Polyline({
+                path: path
+            });
+
+            // 创建覆盖物群组，传入覆盖物组成的数组
+            var overlayGroup = new AMap.OverlayGroup([polyline1]);
+
+            // 对此覆盖物群组设置同一属性
+            overlayGroup.setOptions({
+                strokeColor: 'red',
+                strokeWeight: 1
+            });
+
+            // 统一添加到地图实例上
+            map.add(overlayGroup);
+        }
+
+        // setTimeout(function () {
+        //     saveShareContent(JSON.stringify({data: mapPolylineData}), "mapPolylineData.json")
+        // }, 10000);
+        // 保存文件
+        function saveShareContent (content, fileName) {
+            let downLink = document.createElement('a');
+            downLink.download = fileName;
+            //字符内容转换为blod地址
+            let blob = new Blob([content]);
+            downLink.href = URL.createObjectURL(blob);
+            // 链接插入到页面
+            document.body.appendChild(downLink);
+            downLink.click();
+            // 移除下载链接
+            document.body.removeChild(downLink)
+        }
+
+
+        // var opts = {
+        //     subdistrict: 1,   //返回下一级行政区
+        //     showbiz: false  //最后一级返回街道信息
+        // };
+        // var district = new AMap.DistrictSearch(this.opts);//注意：需要使用插件同步下发功能才能这样直接使用
+        // district.search('120106', (status, result) => {
+        //     console.log(status, result)
+        //     // if (status == 'complete') {
+        //     //     getData(result.districtList[0], '', 100000);
+        //     // }
+        // });
+        //
+        // function getData(data, level, adcode) {//处理获取出来的边界数据
+        //     var subList = data.districtList;
+        //     if (subList) {
+        //         var curlevel = subList[0].level;
+        //         if (curlevel === 'street') {//为了配合echarts地图区县名称显示正常，这边街道级别数据需要特殊处理
+        //             let mapJsonList = this.geoJsonData.features;
+        //             let mapJson = {};
+        //             for (let i in mapJsonList) {
+        //                 if (mapJsonList[i].properties.name == this.cityName) {
+        //                     mapJson.features = [].concat(mapJsonList[i]);
+        //                 }
+        //             }
+        //             this.mapData = [];
+        //             //这个mapData里包含每个区域的code、名称、对应的等级，实现第三步功能时能用上
+        //             this.mapData.push({name: this.cityName, value: Math.random() * 100, level: curlevel});
+        //             this.loadMap(this.cityName, mapJson);
+        //             this.geoJsonData = mapJson;
+        //             return;
+        //         }
+        //
+        //         //街道级以上的数据处理方式
+        //         this.mapData = [];
+        //         for (var i = 0, l = subList.length; i < l; i++) {
+        //             var name = subList[i].name;
+        //             var cityCode = subList[i].adcode;
+        //             //这个mapData里包含每个区域的code、名称、对应的等级，实现第三步功能时能用上
+        //             this.mapData.push({
+        //                 name: name,
+        //                 value: Math.random() * 100,
+        //                 cityCode: cityCode,
+        //                 level: curlevel
+        //             });
+        //         }
+        //         this.loadMapData(adcode);
+        //     }
+        // }
+    })()
+</script>
+</body>
+</html>
